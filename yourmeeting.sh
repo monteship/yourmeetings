@@ -15,7 +15,7 @@
 # under the License.
 #
 
-DEFAULT_CALENDAR="monteship@gmail.com"
+DEFAULT_CALENDAR="Work"
 CALENDAR_URL="https://calendar.google.com/calendar/u/0/r"
 UPCOMING_LENGTH=50
 NOTIFY_PROGRAM=$(command -v notify-send)
@@ -56,7 +56,7 @@ function open_meet_url() {
 function get_events() {
     gcalcli --nocolor --calendar="$DEFAULT_CALENDAR" agenda today --nodeclined --details=end --details=url --tsv |
         grep -E "https://.*" |
-        while IFS=$'\t' read -r start_date start_hour end_date end_hour calendar_url meet_url title; do
+        while IFS=$'\t' read -r start_date start_hour end_date end_hour _ meet_url title; do
             start_timestamp=$(date -d "$start_date $start_hour" +%s)
             end_timestamp=$(date -d "$end_date $end_hour" +%s)
             now=$(date +%s)
@@ -89,9 +89,26 @@ function show_agenda() {
 function main() {
     local open_meet=false
     local url_to_open="$CALENDAR_URL"
-    if [[ "$1" == "--open" ]]; then
-        open_meet=true
-    fi
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --open)
+                open_meet=true
+                shift
+                ;;
+            --calendar)
+                DEFAULT_CALENDAR="$2"
+                shift 2
+                ;;
+            --len)
+                UPCOMING_LENGTH="$2"
+                shift 2
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
 
     upcoming_event=$(get_events | head -n 1)
     if [[ -z "$upcoming_event" ]]; then
@@ -107,14 +124,12 @@ function main() {
         if [[ "$meet_date" != "$today_date" ]]; then
             text="No meeting \ud83c\udfd6\ufe0f"
         elif (( minutes_left < 10 )); then
-            text=$(elipsis "$minutes_left min - $(echo "$upcoming_event" | cut -f3)" "$UPCOMING_LENGTH")
+            text=$"In $minutes_left min - $(echo "$upcoming_event" | cut -f3)"
         else
-            text=$(elipsis "$(date -d "@$start_timestamp" +"%H:%M") - $(echo "$upcoming_event" | cut -f3)" "$UPCOMING_LENGTH")
+            text="$(date -d "@$start_timestamp" +"%H:%M") - $(echo "$upcoming_event" | cut -f3)"
         fi
     fi
 
-    start_timestamp=$(echo "$upcoming_event" | cut -f1)
-    meet_url=$(echo "$upcoming_event" | cut -f2)
     start_date=$(date -d "@$start_timestamp" +"%H:%M")
     minutes_left=$(( (start_timestamp - $(date +%s)) / 60 ))
 
@@ -126,13 +141,11 @@ function main() {
         open_meet_url "$url_to_open"
         exit 0
     fi
-
+    text=$(elipsis "$text" "$UPCOMING_LENGTH")
     tooltip=$(show_agenda | jq -R -s '.')
-
     class="$([ $minutes_left -lt 10 ] && echo 'soon' || echo '')"
 
     python3 -c "import sys, json; print(json.dumps({'text': '$text', 'tooltip': $tooltip, 'class': '$class'}))"
-
 
 }
 
