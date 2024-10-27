@@ -27,8 +27,8 @@ the google Oauth integration](https://github.com/insanum/gcalcli?tab=readme-ov-f
 ```json
     "custom/agenda": {
         "format": "{}",
-        "exec": "./event_notifier.sh --calendar Work --len 50",
-        "on-click": "./event_notifier.sh --calendar Work --len 50 --open",
+        "exec": "/bin/bash /event_notifier.sh --calendar Work --len 50",
+        "on-click": "/bin/bash /event_notifier.sh --calendar Work --len 50 --open",
         "on-click-right": "kitty -- /bin/bash -c \"batz;echo;cal -3;echo;nextmeeting;read;\";",
         "interval": 59,
         "return-type": "json",
