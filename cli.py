@@ -15,7 +15,6 @@
 # under the License.
 #
 
-import argparse
 import datetime
 import html
 import json
@@ -30,7 +29,6 @@ from dataclasses import dataclass
 
 import dateutil.parser as dtparse
 import dateutil.relativedelta as dtrel
-import yaml
 
 REG_TSV = re.compile(
     r"(?P<startdate>(\d{4})-(\d{2})-(\d{2}))\s*?(?P<starthour>(\d{2}:\d{2}))\s*(?P<enddate>(\d{4})-(\d{2})-(\d{"
@@ -39,14 +37,9 @@ REG_TSV = re.compile(
 )
 NOTIFY_PROGRAM: str = shutil.which("notify-send") or ""
 
-# Load configuration from YAML file
-with open("config.yml", "r") as ymlfile:
-    config = yaml.safe_load(ymlfile)
 
-DEFAULT_CALENDAR = config["calendar"]
-NOTIFY_ICON = config["notify_icon"]
-GOOGLE_CALENDAR_PUBLIC_URL = config["google_calendar_public_url"]
-UPCOMING_LENGTH = config["upcoming_length"]
+DEFAULT_CALENDAR = "monteship@gmail.com"
+UPCOMING_LENGTH = 50
 
 
 @dataclass
@@ -54,7 +47,7 @@ class Event:
     title: str
     start_date: datetime.datetime
     end_date: datetime.datetime
-    meet_url: str
+    meet_url: str = ""
 
     @staticmethod
     def is_soon(event: "Event") -> bool:
@@ -107,11 +100,9 @@ def elipsis(string: str, length: int) -> str:
     return string
 
 
-def gcalcli_output(args: argparse.Namespace) -> list[re.Match]:
+def gcalcli_output() -> list[re.Match]:
     with subprocess.Popen(
-        "gcalcli --nocolor --calendar={calendar} agenda today --nodeclined  --details=end --details=url --tsv ".format(
-            calendar=args.calendar
-        ),
+        f"gcalcli --nocolor --calendar={DEFAULT_CALENDAR} agenda today --nodeclined  --details=end --details=url --tsv ",
         shell=True,
         stdout=subprocess.PIPE,
     ) as cmd:
@@ -167,29 +158,13 @@ def notify(
         [
             NOTIFY_PROGRAM,
             "-i",
-            os.path.expanduser(NOTIFY_ICON),
+            os.path.expanduser(
+                "/usr/share/icons/hicolor/scalable/apps/org.gnome.Calendar.svg"
+            ),
             title,
             f"Start: {start_date.strftime('%H:%M')}",
         ]
     )
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--calendar",
-        help="Specify the calendar to use",
-        default=config["calendar"],
-    )
-
-    parser.add_argument(
-        "--open-meet-url",
-        action="store_true",
-        help="click on invite url",
-    )
-
-    return parser.parse_args()
 
 
 def open_meet_url(up_coming: Event | str):
@@ -201,12 +176,14 @@ def open_meet_url(up_coming: Event | str):
 
 
 def main():
-    args = parse_args()
-    matches = gcalcli_output(args)
+    open_meet = False
+    if sys.argv[1:] and sys.argv[1] == "--open":
+        open_meet = True
+    matches = gcalcli_output()
     events_manager = retrieve_events(matches)
     up_coming, soon = events_manager.upcoming_today()
 
-    if args.open_meet_url:
+    if open_meet:
         open_meet_url(up_coming)
         return
 
