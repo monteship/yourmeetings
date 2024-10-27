@@ -52,17 +52,16 @@ function open_meet_url() {
     fi
 }
 
-
 function get_events() {
     gcalcli --nocolor --calendar="$DEFAULT_CALENDAR" agenda today --nodeclined --details=end --details=url --tsv |
         grep -E "https://.*" |
-        while IFS=$'\t' read -r start_date start_hour end_date end_hour _ meet_url title; do
+        while IFS=$'\t' read -r start_date start_hour end_date end_hour calendar_url meet_url title; do
             start_timestamp=$(date -d "$start_date $start_hour" +%s)
             end_timestamp=$(date -d "$end_date $end_hour" +%s)
             now=$(date +%s)
             title=$(html_escape "$title")
             if [[ $now -lt $end_timestamp ]]; then
-                printf "%s\t%s\t%s\n" "$start_timestamp" "$meet_url" "$title"
+                printf "%s\t%s\t%s\n" "$start_timestamp" "$meet_url" "$title" 2>/dev/null
             fi
         done
 }
