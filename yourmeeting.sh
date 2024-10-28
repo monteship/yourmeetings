@@ -43,6 +43,17 @@ function notify() {
     fi
 }
 
+function notify_with_sound() {
+  local title="$1"
+  local start_date="$2"
+  if [[ -n "$NOTIFY_PROGRAM" ]]; then
+    "$NOTIFY_PROGRAM" -i /usr/share/icons/hicolor/scalable/apps/org.gnome.Calendar.svg "$title" "Start: $start_date" -t 60000
+    paplay /usr/share/sounds/freedesktop/stereo/complete.oga
+  fi
+
+
+}
+
 function open_meet_url() {
     local meet_url="$1"
     if [[ -n "$meet_url" ]]; then
@@ -57,10 +68,9 @@ function get_events() {
         grep -E "https://.*" |
         while IFS=$'\t' read -r start_date start_hour end_date end_hour calendar_url meet_url title; do
             start_timestamp=$(date -d "$start_date $start_hour" +%s)
-            end_timestamp=$(date -d "$end_date $end_hour" +%s)
             now=$(date +%s)
             title=$(html_escape "$title")
-            if [[ $now -lt $end_timestamp ]]; then
+            if [[ $now -lt $start_timestamp ]]; then
                 printf "%s\t%s\t%s\n" "$start_timestamp" "$meet_url" "$title" 2>/dev/null
             fi
         done
@@ -132,8 +142,10 @@ function main() {
     start_date=$(date -d "@$start_timestamp" +"%H:%M")
     minutes_left=$(( (start_timestamp - $(date +%s)) / 60 ))
 
-    if (( minutes_left < 10 )); then
+    if (( minutes_left == 10 || minutes_left == 5 )); then
         notify "$text" "$start_date"
+    elif (( minutes_left == 1 )); then
+        notify_with_sound "$text" "$start_date"
     fi
 
     if $open_meet; then
