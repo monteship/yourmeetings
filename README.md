@@ -21,9 +21,10 @@ In title shows only today's events, in the body shows the next event.
 
 1. Clone the repository or download the script directly.
 2. Ensure that dependencies (`gcalcli`, `notify-send`, `jq`, and `xdg-open`) are installed on your system.
-3. You need to install [gcalcli](https://github.com/insanum/gcalcli) and [setup
+3. Calendar name can be obtained with `gcalcli list`
+4. You need to install [gcalcli](https://github.com/insanum/gcalcli) and [setup
 the google Oauth integration](https://github.com/insanum/gcalcli?tab=readme-ov-file#initial-setup) with google calendar.
-4. Setup module in waybar config file.
+5. Setup module in waybar config file.
 ```json
     "custom/agenda": {
         "format": "{}",
