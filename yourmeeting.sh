@@ -15,7 +15,6 @@
 # under the License.
 #
 
-DEFAULT_CALENDAR="Work"
 CALENDAR_URL="https://calendar.google.com/calendar/u/0/r"
 UPCOMING_LENGTH=50
 NOTIFY_PROGRAM=$(command -v notify-send)
@@ -64,12 +63,18 @@ function open_meet_url() {
 }
 
 function get_events() {
-    gcalcli --nocolor --calendar="$DEFAULT_CALENDAR" agenda today --nodeclined --details=end --details=url --tsv |
+    gcalcli agenda --nocolor --nodeclined --details=end --details=url --tsv |
         grep -E "https://.*" |
         while IFS=$'\t' read -r start_date start_hour end_date end_hour calendar_url meet_url title; do
             start_timestamp=$(date -d "$start_date $start_hour" +%s)
+            end_timestamp=$(date -d "$end_date $end_hour" +%s)
             now=$(date +%s)
             title=$(html_escape "$title")
+
+            if [[ -z "$meet_url" ]]; then
+                meet_url="$calendar_url"
+            fi
+
             if [[ $now -lt $start_timestamp ]]; then
                 printf "%s\t%s\t%s\n" "$start_timestamp" "$meet_url" "$title" 2>/dev/null
             fi
@@ -79,8 +84,9 @@ function get_events() {
 function show_today_upcoming() {
     get_events | while IFS=$'\t' read -r start_timestamp meet_url title; do
         start_date=$(date -d "@$start_timestamp" +"%H:%M")
+        end_date=$(date -d "@$end_timestamp" +"%H:%M")
         minutes_left=$(( (start_timestamp - $(date +%s)) / 60 ))
-        if (( minutes_left > 0 )); then
+        if (( minutes_left > -5 )); then
             echo "$start_date - $title"
         fi
 
@@ -103,10 +109,6 @@ function main() {
             --open)
                 open_meet=true
                 shift
-                ;;
-            --calendar)
-                DEFAULT_CALENDAR="$2"
-                shift 2
                 ;;
             --len)
                 UPCOMING_LENGTH="$2"
@@ -132,8 +134,10 @@ function main() {
 
         if [[ "$meet_date" != "$today_date" ]]; then
             text="No meeting \ud83c\udfd6\ufe0f"
-        elif (( minutes_left < 10 )); then
+        elif (( 0 < minutes_left < 10 )); then
             text=$"In $minutes_left min - $(echo "$upcoming_event" | cut -f3)"
+        elif (( minutes_left < 0 )); then
+            text=$"Ongoing - $(echo "$upcoming_event" | cut -f3)"
         else
             text="$(date -d "@$start_timestamp" +"%H:%M") - $(echo "$upcoming_event" | cut -f3)"
         fi
