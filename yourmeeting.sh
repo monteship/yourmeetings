@@ -81,19 +81,6 @@ function get_events() {
         done
 }
 
-function show_today_upcoming() {
-    get_events | while IFS=$'\t' read -r start_timestamp meet_url title; do
-        start_date=$(date -d "@$start_timestamp" +"%H:%M")
-        end_date=$(date -d "@$end_timestamp" +"%H:%M")
-        minutes_left=$(( (start_timestamp - $(date +%s)) / 60 ))
-        if (( minutes_left > -5 )); then
-            echo "$start_date - $title"
-        fi
-
-    done
-
-}
-
 function show_agenda() {
     get_events | while IFS=$'\t' read -r start_timestamp meet_url title; do
         start_date=$(date -d "@$start_timestamp" +"%a %H:%M")
@@ -134,10 +121,11 @@ function main() {
 
         if [[ "$meet_date" != "$today_date" ]]; then
             text="No meeting \ud83c\udfd6\ufe0f"
-        elif (( 0 < minutes_left < 10 )); then
-            text=$"In $minutes_left min - $(echo "$upcoming_event" | cut -f3)"
         elif (( minutes_left < 0 )); then
             text=$"Ongoing - $(echo "$upcoming_event" | cut -f3)"
+        elif (( minutes_left < 10 )); then
+            text=$"In $minutes_left min - $(echo "$upcoming_event" | cut -f3)"
+
         else
             text="$(date -d "@$start_timestamp" +"%H:%M") - $(echo "$upcoming_event" | cut -f3)"
         fi
